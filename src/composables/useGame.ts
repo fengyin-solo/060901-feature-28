@@ -76,7 +76,8 @@ export function useGame() {
         isAnonymous: true,
         isFlipped: true,
         createdAt: new Date().toISOString(),
-        color: '#FFD93D'
+        color: '#FFD93D',
+        votes: 0
       }
       currentTopic.value = emergencyTopic
       return emergencyTopic

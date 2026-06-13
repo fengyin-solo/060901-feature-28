@@ -107,7 +107,8 @@ export function useRoom() {
       isAnonymous,
       isFlipped: false,
       createdAt: new Date().toISOString(),
-      color: TOPIC_COLORS[type]
+      color: TOPIC_COLORS[type],
+      votes: 0
     }
 
     room.topics.push(topic)
@@ -189,6 +190,52 @@ export function useRoom() {
     return true
   }
 
+  const voteTopic = (roomId: string, topicId: string): boolean => {
+    const room = getRoomById(roomId)
+    if (!room) return false
+
+    const topic = room.topics.find(t => t.id === topicId)
+    if (!topic) return false
+
+    topic.votes++
+    saveRoom(room)
+    
+    if (currentRoom.value?.id === roomId) {
+      currentRoom.value = room
+    }
+    loadRooms()
+    
+    return true
+  }
+
+  const startOvertime = (roomId: string, topN: number = 3): boolean => {
+    const room = getRoomById(roomId)
+    if (!room) return false
+
+    const flippedTopics = room.topics.filter(t => t.isFlipped)
+    if (flippedTopics.length === 0) return false
+
+    const topTopics = [...flippedTopics]
+      .sort((a, b) => b.votes - a.votes)
+      .slice(0, topN)
+
+    topTopics.forEach(t => {
+      t.isFlipped = false
+    })
+
+    room.status = 'playing'
+    room.currentTurn = 0
+    room.shuffledTopics = shuffleArray(topTopics.map(t => t.id))
+    saveRoom(room)
+    
+    if (currentRoom.value?.id === roomId) {
+      currentRoom.value = room
+    }
+    loadRooms()
+    
+    return true
+  }
+
   const removeRoom = (id: string): boolean => {
     deleteRoom(id)
     loadRooms()
@@ -222,5 +269,7 @@ export function useRoom() {
     endGame,
     resetGame,
     removeRoom,
+    voteTopic,
+    startOvertime,
   }
 }

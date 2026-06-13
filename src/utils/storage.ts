@@ -5,7 +5,15 @@ const STORAGE_KEY = 'party_topic_bag_rooms'
 export function getRooms(): Room[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY)
-    return data ? JSON.parse(data) : []
+    const rooms = data ? JSON.parse(data) : []
+    rooms.forEach((room: Room) => {
+      room.topics.forEach(topic => {
+        if (topic.votes === undefined) {
+          topic.votes = 0
+        }
+      })
+    })
+    return rooms
   } catch {
     return []
   }

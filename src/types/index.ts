@@ -21,6 +21,7 @@ export interface Topic {
   isFlipped: boolean
   createdAt: string
   color: string
+  votes: number
 }
 
 export interface Member {

@@ -12,7 +12,7 @@ import { copyToClipboard, getDaysRemaining } from '@/utils/helpers'
 
 const route = useRoute()
 const router = useRouter()
-const { loadRoom, currentRoom, addTopic, removeTopic, startGame, error, loadRooms } = useRoom()
+const { loadRoom, currentRoom, addTopic, removeTopic, startGame, error, loadRooms, voteTopic, startOvertime } = useRoom()
 const { isRoomExpired, getExpirationWarning } = useExpire()
 
 const topicContent = ref('')
@@ -31,6 +31,15 @@ const unflippedTopics = computed(() =>
 
 const flippedTopics = computed(() => 
   currentRoom.value?.topics.filter((t: Topic) => t.isFlipped) || []
+)
+
+const topTopics = computed(() => {
+  const flipped = flippedTopics.value.filter((t: Topic) => t.votes > 0)
+  return [...flipped].sort((a: Topic, b: Topic) => b.votes - a.votes)
+})
+
+const canStartOvertime = computed(() => 
+  currentRoom.value?.status === 'ended' && flippedTopics.value.length > 0
 )
 
 const canStartGame = computed(() => 
@@ -114,6 +123,18 @@ const handleCopyCode = () => {
 const handleStartGame = () => {
   if (startGame(roomId.value)) {
     router.push(`/room/${roomId.value}/game`)
+  }
+}
+
+const handleVote = (topicId: string) => {
+  voteTopic(roomId.value, topicId)
+}
+
+const handleStartOvertime = () => {
+  if (confirm('确定开启加时赛吗？会把最受欢迎的 TOP3 话题放回待聊区重新开始～')) {
+    if (startOvertime(roomId.value, 3)) {
+      router.push(`/room/${roomId.value}/game`)
+    }
   }
 }
 
@@ -238,6 +259,23 @@ const goToGame = () => {
             + 追加话题
           </button>
         </div>
+        
+        <div v-else-if="currentRoom.status === 'ended'" class="flex gap-3">
+          <button 
+            class="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="!canStartOvertime"
+            @click="handleStartOvertime"
+          >
+            <span class="text-xl">⏱️</span>
+            开启加时赛
+          </button>
+          <button 
+            class="px-6 py-3 bg-white border-2 border-dashed border-purple-300 text-purple-600 rounded-xl font-medium hover:bg-purple-50 transition-colors"
+            @click="showAddTopic = true"
+          >
+            + 追加话题
+          </button>
+        </div>
       </div>
 
       <div v-if="unflippedTopics.length > 0" class="mb-6">
@@ -255,6 +293,37 @@ const goToGame = () => {
         </div>
       </div>
 
+      <div v-if="topTopics.length > 0 && currentRoom.status === 'ended'" class="mb-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <span>🏆</span> 最受欢迎话题 TOP{{ topTopics.length > 3 ? 3 : topTopics.length }}
+        </h2>
+        <div class="space-y-3">
+          <div 
+            v-for="(topic, index) in topTopics.slice(0, 3)" 
+            :key="topic.id"
+            class="relative"
+          >
+            <div 
+              class="absolute -left-2 -top-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg z-10"
+              :class="{
+                'bg-yellow-400': index === 0,
+                'bg-gray-400': index === 1,
+                'bg-amber-600': index === 2
+              }"
+            >
+              {{ index + 1 }}
+            </div>
+            <div class="ml-2">
+              <TopicCard 
+                :topic="topic"
+                :can-vote="currentRoom.status === 'ended'"
+                @vote="handleVote(topic.id)"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="flippedTopics.length > 0">
         <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
           <span>✅</span> 已聊话题 ({{ flippedTopics.length }})
@@ -264,6 +333,8 @@ const goToGame = () => {
             v-for="topic in flippedTopics" 
             :key="topic.id"
             :topic="topic"
+            :can-vote="currentRoom.status === 'ended'"
+            @vote="handleVote(topic.id)"
           />
         </div>
       </div>

@@ -3,14 +3,21 @@ import type { Topic } from '@/types'
 import { TOPIC_EMOJIS } from '@/types'
 import { formatDate } from '@/utils/helpers'
 
-defineProps<{
+const props = defineProps<{
   topic: Topic
   canDelete?: boolean
+  canVote?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'delete'): void
+  (e: 'vote'): void
 }>()
+
+const handleVote = (e: Event) => {
+  e.stopPropagation()
+  emit('vote')
+}
 </script>
 
 <template>
@@ -49,7 +56,21 @@ const emit = defineEmits<{
         <span>
           {{ topic.isAnonymous ? '🎭 匿名' : `👤 ${topic.author}` }}
         </span>
-        <span>{{ formatDate(topic.createdAt) }}</span>
+        <div class="flex items-center gap-3">
+          <span>{{ formatDate(topic.createdAt) }}</span>
+          <button 
+            v-if="canVote"
+            class="flex items-center gap-1 px-2 py-1 rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+            @click="handleVote"
+          >
+            <span>❤️</span>
+            <span class="font-medium">{{ topic.votes }}</span>
+          </button>
+          <span v-else-if="topic.votes > 0" class="flex items-center gap-1 text-red-400">
+            <span>❤️</span>
+            <span>{{ topic.votes }}</span>
+          </span>
+        </div>
       </div>
       
       <div 
